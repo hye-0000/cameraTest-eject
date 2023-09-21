@@ -1,6 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { Text, View, TouchableOpacity } from 'react-native';
 import { Camera } from 'expo-camera';
+import * as MediaLibrary from 'expo-media-library';
+import { requestMediaLibraryPermission } from './permissions';
+
 
 export default function App() {
     const [hasPermission, setHasPermission] = useState(null);
@@ -16,6 +19,12 @@ export default function App() {
         if (cameraRef.current) {
             try {
                 const { uri } = await cameraRef.current.recordAsync();
+
+                await requestMediaLibraryPermission();
+
+                const asset = await MediaLibrary.createAssetAsync(uri);
+                await MediaLibrary.createAlbumAsync('Expo Videos', asset, false);
+
                 console.log('동영상 저장 경로:', uri);
             } catch (error) {
                 console.error('동영상 촬영 중 오류:', error);
