@@ -10,6 +10,7 @@ export default function App() {
     const [isRecording, setIsRecording] = useState(false);
     const [countdown, setCountdown] = useState(5);
     const [showCamera, setShowCamera] = useState(false); // 카메라 화면 표시 여부
+    const [cameraType, setCameraType] = useState(Camera.Constants.Type.back); // 카메라 타입
 
     useEffect(() => {
         (async () => {
@@ -70,15 +71,34 @@ export default function App() {
         }
     };
 
+    // 카메라 전환 함수
+    const toggleCameraType = () => {
+        setCameraType(
+            cameraType === Camera.Constants.Type.back
+                ? Camera.Constants.Type.front
+                : Camera.Constants.Type.back
+        );
+    };
+
     // 렌더링
     return (
         <View style={{ flex: 1, backgroundColor: 'white' }}>
             {showCamera ? (
                 <Camera
                     style={{ flex: 1 }}
-                    type={Camera.Constants.Type.back}
+                    type={cameraType} // 전면 카메라 또는 후면 카메라 선택
                     ref={cameraRef}
                 >
+                    <View style={styles.topButtons}>
+                        <TouchableOpacity
+                            style={[styles.button, styles.cameraToggleButton]}
+                            onPress={toggleCameraType}
+                        >
+                            <Text style={styles.buttonText}>
+                                전면/후면 전환
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
                     <View style={styles.countdown}>
                         {countdown > 0 && (
                             <Text style={styles.countdownText}>{countdown}</Text>
@@ -120,6 +140,12 @@ export default function App() {
 const windowWidth = Dimensions.get('window').width;
 
 const styles = StyleSheet.create({
+    topButtons: {
+        flexDirection: 'row',
+        justifyContent: 'flex-start', // 왼쪽으로 정렬
+        marginHorizontal: 20,
+        marginTop: 20, // 버튼과 상단 간격 설정
+    },
     countdown: {
         flex: 1,
         justifyContent: 'center',
@@ -152,6 +178,9 @@ const styles = StyleSheet.create({
     },
     stopButton: {
         backgroundColor: 'red',
+    },
+    cameraToggleButton: {
+        backgroundColor: 'green',
     },
     centeredView: {
         flex: 1,
