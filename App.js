@@ -12,8 +12,8 @@ export default function App() {
     const [countdown, setCountdown] = useState(5);
     const [showCamera, setShowCamera] = useState(false);
     const [cameraType, setCameraType] = useState(Camera.Constants.Type.back);
-    const [videoAsset, setVideoAsset] = useState(null);
     const [selectedVideo, setSelectedVideo] = useState(null);
+
     useEffect(() => {
         (async () => {
             const { status } = await Camera.requestCameraPermissionsAsync();
