@@ -63,7 +63,6 @@ export default function App() {
 
                 console.log('동영상 저장 경로:', uri);
 
-                setVideoAsset(asset);
                 setSelectedVideo(uri);
                 console.log('설정된 URI:', uri); // uri 값을 출력하여 확인
 
