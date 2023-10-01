@@ -7,6 +7,7 @@ import { requestMediaLibraryPermission } from './permissions';
 import RNFetchBlob from 'rn-fetch-blob';
 import Video from 'react-native-video';
 
+
 export default function App() {
     const [hasPermission, setHasPermission] = useState(null);
     const cameraRef = React.createRef();
@@ -14,7 +15,8 @@ export default function App() {
     const [countdown, setCountdown] = useState(5);
     const [showCamera, setShowCamera] = useState(false);
     const [cameraType, setCameraType] = useState(Camera.Constants.Type.back);
-    const [videoURI, setVideoURI] = useState(null);
+    const [videoPath, setVideoPath] = useState(null);
+    const [isPlaying, setIsPlaying] = useState(false);
 
     useEffect(() => {
         (async () => {
@@ -91,25 +93,48 @@ export default function App() {
         );
     };
 
-
-    // 동영상 불러오기 및 재생 함수
-    const loadAndPlayVideo = async () => {
-        try {
-            const response = await RNFetchBlob.fs.lstat('/var/mobile/Media/DCIM');
-
-            if (response && response.length > 0) {
-                // 동영상 목록에서 가장 최근 파일을 가져옴
-                const mostRecentVideo = response.sort((a, b) => b.lastModified - a.lastModified)[0];
-                const videoPath = mostRecentVideo.path();
-
-                // 가져온 동영상을 재생할 수 있도록 경로를 상태에 저장
-                setVideoURI(videoPath);
-            } else {
-                console.log('동영상을 찾을 수 없습니다.');
+    useEffect(() => {
+        const getRecentVideo = async () => {
+            try {
+                if (Platform.OS === 'ios') {
+                    const params = {
+                        first: 1, // 가져올 비디오 수
+                        mediaType: 'video',
+                        assetType: 'Videos',
+                        sortBy: 'creationTime', // 최근 생성된 비디오부터
+                    };
+                    const result = await CameraRoll.getPhotos(params);
+                    if (result.edges.length > 0) {
+                        const videoURI = result.edges[0].node.image.uri;
+                        setVideoPath(videoURI);
+                    }
+                } else if (Platform.OS === 'android') {
+                    const queryUri = Platform.Version >= 29
+                        ? 'content://media/internal/video/media'
+                        : 'content://media/external/video/media';
+                    const queryOrder = 'date_added DESC';
+                    const queryProjection = ['_id', '_data'];
+                    const result = await RNFetchBlob.contentResolverQuery({
+                        uri: queryUri,
+                        order: queryOrder,
+                        projection: queryProjection,
+                        limit: 1, // 가져올 비디오 수
+                    });
+                    if (result.length > 0) {
+                        const videoPath = result[0]._data;
+                        setVideoPath(videoPath);
+                    }
+                }
+            } catch (error) {
+                console.error('최근 비디오 가져오기 오류:', error);
             }
-        } catch (error) {
-            console.error('동영상을 불러오는 동안 오류 발생:', error);
-        }
+        };
+
+        getRecentVideo();
+    }, []);
+
+    const togglePlay = () => {
+        setIsPlaying(!isPlaying);
     };
 
 
@@ -163,21 +188,25 @@ export default function App() {
                     >
                         <Text style={styles.buttonText}>카메라 촬영 시작</Text>
                     </TouchableOpacity>
-                    {videoURI ? (
-                        <Video
-                            source={{ uri: videoURI }}
-                            resizeMode="cover"
-                            shouldPlay
-                            useNativeControls
-                            style={{ width: 300, height: 200 }}
-                        />
+                    {videoPath ? (
+                        <>
+                            <TouchableOpacity
+                                style={styles.mainButton}
+                                onPress={togglePlay}
+                            >
+                                <Text style={styles.buttonText}>{isPlaying ? '일시 정지' : '재생'}</Text>
+                            </TouchableOpacity>
+                            {isPlaying && (
+                                <Video
+                                    source={{ uri: videoPath }} // 비디오 경로 설정
+                                    style={styles.videoPlayer}
+                                    controls={true}
+                                    paused={!isPlaying}
+                                />
+                            )}
+                        </>
                     ) : (
-                        <TouchableOpacity
-                            style={styles.mainButton}
-                            onPress={loadAndPlayVideo} // 재생 버튼 누를 때 동영상 불러오기 함수 호출
-                        >
-                            <Text style={styles.buttonText}>재생</Text>
-                        </TouchableOpacity>
+                        <Text>비디오를 가져오는 중...</Text>
                     )}
                 </View>
             )}
