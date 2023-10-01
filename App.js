@@ -3,7 +3,9 @@ import { Text, View, TouchableOpacity, StyleSheet, Dimensions, FlatList } from '
 import { Camera } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
 import { requestMediaLibraryPermission } from './permissions';
-import { Video } from 'expo-av';
+//import { Video } from 'expo-av';
+import RNFetchBlob from 'rn-fetch-blob';
+import Video from 'react-native-video';
 
 export default function App() {
     const [hasPermission, setHasPermission] = useState(null);
@@ -12,7 +14,7 @@ export default function App() {
     const [countdown, setCountdown] = useState(5);
     const [showCamera, setShowCamera] = useState(false);
     const [cameraType, setCameraType] = useState(Camera.Constants.Type.back);
-    const [selectedVideo, setSelectedVideo] = useState(null);
+    const [videoURI, setVideoURI] = useState(null);
 
     useEffect(() => {
         (async () => {
@@ -89,26 +91,27 @@ export default function App() {
         );
     };
 
-    const playVideo = () => {
-        console.log('playVideo에서 selectedVideo:', selectedVideo); // selectedVideo 값 확인
-        if (selectedVideo) {
-            // 선택한 비디오 URI가 있다면 해당 URI를 사용하여 동영상을 재생합니다.
-            return (
-                <Video
-                    source={{ uri: selectedVideo }}
-                    rate={1.0}
-                    volume={1.0}
-                    isMuted={false}
-                    shouldPlay={true}
-                    resizeMode="contain"
-                    style={{ flex: 1 }}
-                />
-            );
-        } else {
-            console.log('선택한 동영상이 없습니다.');
-            return null; // 선택한 동영상이 없을 경우, 아무것도 렌더링하지 않습니다.
+
+    // 동영상 불러오기 및 재생 함수
+    const loadAndPlayVideo = async () => {
+        try {
+            const response = await RNFetchBlob.fs.lstat('/var/mobile/Media/DCIM');
+
+            if (response && response.length > 0) {
+                // 동영상 목록에서 가장 최근 파일을 가져옴
+                const mostRecentVideo = response.sort((a, b) => b.lastModified - a.lastModified)[0];
+                const videoPath = mostRecentVideo.path();
+
+                // 가져온 동영상을 재생할 수 있도록 경로를 상태에 저장
+                setVideoURI(videoPath);
+            } else {
+                console.log('동영상을 찾을 수 없습니다.');
+            }
+        } catch (error) {
+            console.error('동영상을 불러오는 동안 오류 발생:', error);
         }
     };
+
 
     return (
         <View style={{ flex: 1, backgroundColor: 'white' }}>
@@ -160,12 +163,22 @@ export default function App() {
                     >
                         <Text style={styles.buttonText}>카메라 촬영 시작</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.mainButton, styles.playButton]}
-                        onPress={() => playVideo(selectedVideo)}
-                    >
-                        <Text style={styles.buttonText}>재생</Text>
-                    </TouchableOpacity>
+                    {videoURI ? (
+                        <Video
+                            source={{ uri: videoURI }}
+                            resizeMode="cover"
+                            shouldPlay
+                            useNativeControls
+                            style={{ width: 300, height: 200 }}
+                        />
+                    ) : (
+                        <TouchableOpacity
+                            style={styles.mainButton}
+                            onPress={loadAndPlayVideo} // 재생 버튼 누를 때 동영상 불러오기 함수 호출
+                        >
+                            <Text style={styles.buttonText}>재생</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
             )}
         </View>
